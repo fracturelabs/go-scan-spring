@@ -174,7 +174,7 @@ func init() {
 	scanCmd.Flags().IntVarP(&options.Threads, "threads", "t", 5, 
 		"Number of threads")
 
-	scanCmd.Flags().IntVarP(&options.Sleep, "sleep", "s", 5, 
+	scanCmd.Flags().IntVarP(&options.Sleep, "sleep", "s", 10, 
 		"Time to sleep between exploit steps. This is needed to allow time for deployment.")
 
 	scanCmd.Flags().StringVarP(&options.Identifier, "identifier", "", "go-scan-spring", 
