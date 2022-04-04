@@ -12,14 +12,21 @@
 </p>
 <br>
 
-# Usage
-
-## From source
+# Installation
 ```bash
-go run main.go help scan
+go install github.com/fracturelabs/go-scan-spring@latest
 ```
 
-# Verification
+# Usage
+## Help
+```bash
+go-scan-spring help scan
+```
+## Basic safe scan
+```bash
+go-scan-spring scan --run-safe -f urls.txt
+```
+### Verification
 You can verify the script works properly by testing against an intentionally vulnerable system, such as [spring4shell_victim](https://github.com/fracturelabs/spring4shell_victim)
 
 # Credits
