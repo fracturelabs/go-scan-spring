@@ -22,3 +22,7 @@ go run main.go help scan
 # Verification
 You can verify the script works properly by testing against an intentionally vulnerable system, such as [spring4shell_victim](https://github.com/fracturelabs/spring4shell_victim)
 
+# Credits
+* The entire structure and several functions were borrowed heavily from the wonderful [GoWitness](https://github.com/sensepost/gowitness) project from SensePost.
+* The safe check implemented in this was inspired by [The Randori Attack Team](https://twitter.com/RandoriAttack/status/1509298490106593283) and [Zach Grace](https://twitter.com/ztgrace)
+* Whoever created the first PoC - stuff is moving too fast to properly attribute this right now!
