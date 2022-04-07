@@ -231,10 +231,10 @@ func init() {
 		"Run an exploit to retrieve the owner of the Tomcat process")
 
 	scanCmd.Flags().BoolVarP(&options.HTTPGet, "http-get", "", true,
-		"Run an exploit to retrieve the owner of the Tomcat process")
+		"Test using HTTP GET requests (must set =false to disable)")
 
 	scanCmd.Flags().BoolVarP(&options.HTTPPost, "http-post", "", true,
-		"Run an exploit to retrieve the owner of the Tomcat process")
+		"Test using HTTP POST requests (must set =false to disable)")
 
 
 	scanCmd.MarkPersistentFlagRequired("file")
