@@ -20,6 +20,8 @@ type Options struct {
 	RunBaseline bool
 	RunSafe bool
 	RunExploit bool
+	HTTPGet bool
+	HTTPPost bool
 }
 
 func NewOptions() *Options {

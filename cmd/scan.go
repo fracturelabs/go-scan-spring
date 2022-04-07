@@ -39,123 +39,158 @@ var scanCmd = &cobra.Command{
 				return
 			}
 
-			for _, u := range getUrls(candidate) {
+			for _, candidateURL := range getUrls(candidate) {
 				swg.Add()
 
-				log.Debug().Str("url", u.String()).Msg("Queuing")
 				go func(url *url.URL) {
 					defer swg.Done()
 					statusLog := log.Info()
-					
-					p := &lib.Processor{
-						Logger:         log,
-						BaseURL:        url,
-						HTTPClient:     client,
-						HTTPMethod:     "GET",
-						Identifier:     options.Identifier,
+
+					methods := []string{}
+
+					if options.HTTPGet {
+						methods = append(methods, "GET")
 					}
 
-					log.Debug().Bool("RunBaseline", options.RunBaseline).Msg("RUN")
-					// Baseline Scan
-					if options.RunBaseline {
-						err := p.Baseline()
-
-						if err != nil {
-							log.Error().Err(err).
-								Str("url", url.String()).
-								Msg("Baseline scan failed")
-							return
-						}
-						
-						log.Debug().
-							Str("original URL", url.String()).
-							Str("final URL", p.FinalBaselineURL.String()).
-							Int("Response Code", p.BaselineResponseStatus).
-							Msg("Baseline finished")
-												
+					if options.HTTPPost {
+						methods = append(methods, "POST")
 					}
 
+					sleepNeeded := false
+					for _, method := range methods {
+						log.Debug().Str("method", method).Str("url", url.String()).Msg("Queuing")
 
-					// Safe Scan
-					log.Debug().Bool("RunSafe", options.RunSafe).Msg("RUN")
-					if options.RunSafe {
-						err = p.Safe()
-
-						if err != nil {
-							log.Error().Err(err).
-								Str("url", url.String()).
-								Msg("Safe scan failed")
-								
-							return
+						p := &lib.Processor{
+							Logger:         log,
+							BaseURL:        url,
+							HTTPClient:     client,
+							HTTPMethod:     method,
+							Identifier:     options.Identifier,
 						}
 
-						log.Debug().
-							Str("original URL", url.String()).
-							Str("final URL", p.FinalSafeURL.String()).
-							Int("Response Code", p.SafeResponseStatus).
-							Msg("Safe finished")
-							
-
-						if p.Vulnerable {
-							statusLog = log.Warn()
+						if sleepNeeded {
 							time.Sleep(time.Duration(options.Sleep) * time.Second)
+							sleepNeeded = false
 						}
-					}
-					
 
-					
-					log.Debug().Bool("RunExploit", options.RunExploit).Msg("RUN")
-					//TODO: Create a function to look for 'go-scan-spring-whoami' to prevent duplicate runs of Exploit
-					if options.RunExploit {
-						// Run the exploit
-						err = p.Exploit()
 
-						if err != nil {
-							log.Error().Err(err).
-								Str("url", url.String()).
-								Msg("Exploit scan failed")
-							return
+						// Baseline Scan
+						if options.RunBaseline {
+							err := p.Baseline()
+
+							if err != nil {
+								log.Error().Err(err).
+									Str("url", url.String()).
+									Msg("Baseline scan failed")
+								return
+							}
+							
+							log.Debug().
+								Str("original URL", url.String()).
+								Str("final URL", p.FinalBaselineURL.String()).
+								Int("Response Code", p.BaselineResponseStatus).
+								Msg("Baseline finished")
+													
+						}
+
+
+						// Safe Scan
+						if options.RunSafe {
+							if sleepNeeded {
+								time.Sleep(time.Duration(options.Sleep) * time.Second)
+								sleepNeeded = false
+							}
+
+							err = p.Safe()
+
+							if err != nil {
+								log.Error().Err(err).
+									Str("url", url.String()).
+									Msg("Safe scan failed")
+									
+								return
+							}
+
+							log.Debug().
+								Str("original URL", url.String()).
+								Str("final URL", p.FinalSafeURL.String()).
+								Int("Response Code", p.SafeResponseStatus).
+								Msg("Safe finished")
+								
+
+							if p.Vulnerable {
+								statusLog = log.Warn()
+								sleepNeeded = true
+							}
 						}
 						
-						log.Debug().
-							Str("original URL", url.String()).
-							Str("final URL", p.FinalExploitURL.String()).
-							Int("Response Code", p.ExploitResponseStatus).
-							Msg("Exploit finished")
-		
 
-						if p.Vulnerable && p.Exploited {
-							statusLog = log.Warn()
-						}
-
-						//Reset the logging
-						time.Sleep(time.Duration(options.Sleep) * time.Second)
-						err = p.Reset()
-						if err != nil {
-							log.Error().Err(err).
-								Str("url", url.String()).
-								Msg("Reset scan failed")
-							return
-						}
 						
-						log.Debug().
-							Str("original URL", url.String()).
-							Int("Response Code", p.ResetResponseStatus).
-							Msg("Reset finished")
+						//TODO: Create a function to look for 'go-scan-spring-whoami' to prevent duplicate runs of Exploit
+						if options.RunExploit {
+							// Run the exploit
 
+							if sleepNeeded {
+								time.Sleep(time.Duration(options.Sleep) * time.Second)
+								sleepNeeded = false
+							}
 
+							err = p.Exploit()
+							sleepNeeded = true
+
+							if err != nil {
+								log.Error().Err(err).
+									Str("url", url.String()).
+									Msg("Exploit scan failed")
+								return
+							}
+							
+							log.Debug().
+								Str("original URL", url.String()).
+								Str("final URL", p.FinalExploitURL.String()).
+								Int("Response Code", p.ExploitResponseStatus).
+								Msg("Exploit finished")
+			
+
+							if p.Vulnerable || p.Exploited {
+								statusLog = log.Warn()
+							}
+
+							//Reset the logging
+
+							if sleepNeeded {
+								time.Sleep(time.Duration(options.Sleep) * time.Second)
+								sleepNeeded = false
+							}
+
+							err = p.Reset()
+							sleepNeeded = true
+
+							if err != nil {
+								log.Error().Err(err).
+									Str("url", url.String()).
+									Msg("Reset scan failed")
+								return
+							}
+							
+							log.Debug().
+								Str("original URL", url.String()).
+								Int("Response Code", p.ResetResponseStatus).
+								Msg("Reset finished")
+						}
+
+						statusLog.
+							Str("Method", p.HTTPMethod).
+							Bool("Vulnerable", p.Vulnerable).
+							Bool("Exploited", p.Exploited).
+							Str("Target URL", url.String()).
+							Int("Baseline Status", p.BaselineResponseStatus).
+							Int("Safe Status", p.SafeResponseStatus).
+							Int("Exploit Status", p.ExploitResponseStatus).
+							Str("Verification URL", p.Verification).
+							Msg("Finished scanning target")
 					}
-
-					statusLog.
-						Bool("vulnerable", p.Vulnerable).
-						Bool("exploited", p.Exploited).
-						Str("url", url.String()).
-						Int("Baseline", p.BaselineResponseStatus).
-						Int("Safe", p.SafeResponseStatus).
-						Int("Exploit", p.ExploitResponseStatus).
-						Str("Verification", p.Verification).
-						Msg("Finished URL")
-				}(u)
+				}(candidateURL)
 			}
 		}
 
@@ -194,6 +229,13 @@ func init() {
 
 	scanCmd.Flags().BoolVarP(&options.RunExploit, "run-exploit", "", false,
 		"Run an exploit to retrieve the owner of the Tomcat process")
+
+	scanCmd.Flags().BoolVarP(&options.HTTPGet, "http-get", "", true,
+		"Run an exploit to retrieve the owner of the Tomcat process")
+
+	scanCmd.Flags().BoolVarP(&options.HTTPPost, "http-post", "", true,
+		"Run an exploit to retrieve the owner of the Tomcat process")
+
 
 	scanCmd.MarkPersistentFlagRequired("file")
 }
@@ -246,7 +288,6 @@ func getHTTPClient() (*http.Client) {
 	}
 
 	if options.Proxy != "" {
-		log.Debug().Str("proxy", options.Proxy).Msg("Found a proxy")
 		proxyURL, err := url.Parse(options.Proxy)
 		if err != nil {
 			log.Fatal().Err(err).Str("proxy", options.Proxy).
@@ -265,7 +306,6 @@ func getHTTPClient() (*http.Client) {
 
 	log.Debug().Bool("FollowRedirect", options.FollowRedirect).Msg("Redirects")
 	if ! options.FollowRedirect {
-		log.Debug().Msg("Setting CheckRedirect")
 		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
             return http.ErrUseLastResponse
         }
